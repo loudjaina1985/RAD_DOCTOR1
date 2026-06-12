@@ -1,0 +1,8 @@
+{
+  "name": "Remix: RAD_DOCTOR",
+  "description": "Enterprise Clinical Decision Support System for Medical X-Ray Interpretation and Reports Generation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
