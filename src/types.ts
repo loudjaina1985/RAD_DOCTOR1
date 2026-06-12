@@ -1,4 +1,4 @@
-export type ActiveTab = "WORKSPACE" | "ROLES";
+export type ActiveTab = "WORKSPACE" | "ROLES" | "BLUEPRINTS";
 
 export type Language = "English" | "French" | "Arabic";
 
@@ -23,7 +23,7 @@ export interface Study {
   patientId: string;
   date: string;
   bodyRegion: BodyRegion;
-  pathologyType: "Normal study" | "Bone fracture" | "Pneumonia";
+  pathologyType: "Normal study" | "Bone fracture" | "Pneumonia" | "Pneumothorax" | "Bone Lesion";
   confidenceScore: number;
   boundingBoxes: Array<{ x: number; y: number; w: number; h: number; label: string }>;
   heatmapCenters: Array<{ x: number; y: number; r: number; intensity: number }>;

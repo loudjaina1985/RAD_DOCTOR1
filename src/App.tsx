@@ -9,6 +9,7 @@ import {
 } from "./types";
 import DicomViewer from "./components/DicomViewer";
 import UserRolesMatrix from "./components/UserRolesMatrix";
+import BlueprintsStudio from "./components/BlueprintsStudio";
 import { jsPDF } from "jspdf";
 import { 
   Users, 
@@ -30,7 +31,8 @@ import {
   CornerDownRight,
   BookOpen,
   Signature,
-  Download
+  Download,
+  Cpu
 } from "lucide-react";
 
 
@@ -115,7 +117,9 @@ export default function App() {
     { id: "P-101", name: "Gabriel Vance", gender: "Male", age: 54, mrn: "MRN-301-92B" },
     { id: "P-202", name: "Clara Tremblay", gender: "Female", age: 29, mrn: "MRN-551-80F" },
     { id: "P-303", name: "Yousef Al-Masri", gender: "Male", age: 67, mrn: "MRN-774-12C" },
-    { id: "P-404", name: "Amelia Thorne", gender: "Female", age: 41, mrn: "MRN-902-33W" }
+    { id: "P-404", name: "Amelia Thorne", gender: "Female", age: 41, mrn: "MRN-902-33W" },
+    { id: "P-505", name: "Farah Haddad", gender: "Female", age: 34, mrn: "MRN-641-12E" },
+    { id: "P-606", name: "Léon Dubois", gender: "Male", age: 58, mrn: "MRN-553-41L" }
   ]);
 
   // Medical Studies Presets
@@ -159,6 +163,36 @@ export default function App() {
       confidenceScore: 98.4,
       boundingBoxes: [],
       heatmapCenters: []
+    },
+    {
+      id: "S-995",
+      patientId: "P-505",
+      date: "2026-06-12 08:30",
+      bodyRegion: "Chest X-ray",
+      pathologyType: "Pneumothorax",
+      confidenceScore: 95.8,
+      boundingBoxes: [{ x: 180, y: 140, w: 110, h: 130, label: "PNEUMOTHORAX" }],
+      heatmapCenters: [{ x: 235, y: 205, r: 85, intensity: 0.95 }]
+    },
+    {
+      id: "S-996",
+      patientId: "P-606",
+      date: "2026-06-12 09:12",
+      bodyRegion: "Pelvis X-ray",
+      pathologyType: "Bone Lesion",
+      confidenceScore: 93.1,
+      boundingBoxes: [{ x: 185, y: 195, w: 50, h: 50, label: "LYTIC LESION" }],
+      heatmapCenters: [{ x: 210, y: 220, r: 40, intensity: 0.88 }]
+    },
+    {
+      id: "S-997",
+      patientId: "P-404",
+      date: "2026-06-12 09:40",
+      bodyRegion: "Upper Limb X-ray",
+      pathologyType: "Bone Lesion",
+      confidenceScore: 95.5,
+      boundingBoxes: [{ x: 220, y: 170, w: 155, h: 140, label: "Massive humeral bone defect with antibiotic beads and failed hardware" }],
+      heatmapCenters: [{ x: 295, y: 240, r: 80, intensity: 0.95 }]
     }
   ]);
 
@@ -832,6 +866,19 @@ ${analysis.preliminaryFindings || "No detailed findings returned. Study alignmen
           <Users className="w-4 h-4" />
           {tr.roles}
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("BLUEPRINTS")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all cursor-pointer ${
+            activeTab === "BLUEPRINTS" 
+              ? "bg-blue-600 text-white shadow-lg shadow-blue-500/10" 
+              : "text-slate-400 hover:text-slate-200 hover:bg-slate-700/60"
+          }`}
+        >
+          <Cpu className="w-4 h-4" />
+          {tr.blueprints}
+        </button>
       </div>
 
       {/* Main Body view */}
@@ -1331,6 +1378,13 @@ ${analysis.preliminaryFindings || "No detailed findings returned. Study alignmen
               onSetRole={setCurrentUserRole}
               onAddLog={appendLog}
             />
+          </div>
+        )}
+
+        {/* TAB 5: BLUEPRINTS */}
+        {activeTab === "BLUEPRINTS" && (
+          <div className="space-y-6 max-w-6xl mx-auto">
+            <BlueprintsStudio />
           </div>
         )}
 

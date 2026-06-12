@@ -17,7 +17,7 @@ import {
 
 interface DicomViewerProps {
   bodyRegion: BodyRegion;
-  pathologyType: "Normal study" | "Bone fracture" | "Pneumonia";
+  pathologyType: "Normal study" | "Bone fracture" | "Pneumonia" | "Pneumothorax" | "Bone Lesion";
   aiConfidence: number;
   showAiOverlay: boolean;
   onAddLog: (action: string, details: string) => void;
@@ -113,106 +113,115 @@ export default function DicomViewer({
 
   // Handle canvas rendering
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    let animationFrameId: number;
 
-    // Direct resolution
-    canvas.width = 640;
-    canvas.height = 480;
+    const render = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-    // Fill background (simulating carbon medical DICOM monitor dark level)
-    ctx.fillStyle = "#0c0f12";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Direct resolution
+      canvas.width = 640;
+      canvas.height = 480;
 
-    // Save context for transform stack
-    ctx.save();
-    
-    // 1. Apply Pan & Zoom
-    ctx.translate(canvas.width / 2 + panX, canvas.height / 2 + panY);
-    ctx.scale(zoom, zoom);
-    ctx.translate(-canvas.width / 2, -canvas.height / 2);
+      // Fill background (simulating carbon medical DICOM monitor dark level)
+      ctx.fillStyle = "#0c0f12";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 2. Apply Brightness & Contrast filter in canvas drawing
-    // Formula: filter = brightness(X%) contrast(Y%) invert(Z%)
-    ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) invert(${invert ? 100 : 0}%)`;
-
-    // 3. Render Anatomy (Procedural X-Ray Simulation or Custom Uploaded Image)
-    if (loadedImg) {
-      ctx.drawImage(loadedImg, 0, 0, canvas.width, canvas.height);
-    } else {
-      renderAnatomy(ctx, bodyRegion, pathologyType);
-    }
-
-    // Turn off filters for UI/Overlays so bounding boxes & texts aren't washed out
-    ctx.filter = "none";
-
-    // 4. Render AI Overlays if enabled
-    if (showAiOverlay) {
-      renderAiOverlays(ctx, bodyRegion, pathologyType, aiConfidence, boundingBoxes, heatmapCenters);
-    }
-
-    // 5. Render saved User Annotations/Measurements
-    ctx.lineWidth = 2;
-    currentAnnotations.forEach(ann => {
-      if (ann.type === "line" && ann.points.length === 2) {
-        // Render linear calliper measurement
-        ctx.strokeStyle = "#10b981"; // Emerald green
-        ctx.fillStyle = "#10b981";
-        
-        const [p1, p2] = ann.points;
-        // Draw dashed connection line
-        ctx.beginPath();
-        ctx.setLineDash([4, 4]);
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Draw calliper ticks
-        drawCalliperTick(ctx, p1, p2);
-
-        // Draw text value
-        ctx.font = "11px monospace";
-        const midX = (p1.x + p2.x) / 2;
-        const midY = (p1.y + p2.y) / 2;
-        ctx.fillStyle = "#10b981";
-        ctx.fillText(ann.value || "", midX + 8, midY - 8);
-      } else if (ann.type === "freehand" && ann.points.length > 1) {
-        ctx.strokeStyle = "#e11d48"; // Rose pink
-        ctx.beginPath();
-        ctx.moveTo(ann.points[0].x, ann.points[0].y);
-        ann.points.slice(1).forEach(pt => ctx.lineTo(pt.x, pt.y));
-        ctx.stroke();
-      }
-    });
-
-    // 6. Draw current drawing feedback in active interaction mode
-    if (currentPoints.length > 0) {
-      ctx.strokeStyle = viewerMode === "measure" ? "#34d399" : "#fb7185";
-      ctx.lineWidth = 1.5;
+      // Save context for transform stack
+      ctx.save();
       
-      if (viewerMode === "measure" && currentPoints.length === 1) {
-        // Render guide line if placing secondary point
-        // handled in mousemove but draw initial point circle
-        ctx.fillStyle = "#34d399";
-        ctx.beginPath();
-        ctx.arc(currentPoints[0].x, currentPoints[0].y, 3, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (viewerMode === "annotate" && currentPoints.length > 1) {
-        ctx.beginPath();
-        ctx.moveTo(currentPoints[0].x, currentPoints[0].y);
-        currentPoints.forEach(pt => ctx.lineTo(pt.x, pt.y));
-        ctx.stroke();
+      // 1. Apply Pan & Zoom
+      ctx.translate(canvas.width / 2 + panX, canvas.height / 2 + panY);
+      ctx.scale(zoom, zoom);
+      ctx.translate(-canvas.width / 2, -canvas.height / 2);
+
+      // 2. Apply Brightness & Contrast filter in canvas drawing
+      // Formula: filter = brightness(X%) contrast(Y%) invert(Z%)
+      ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) invert(${invert ? 100 : 0}%)`;
+
+      // 3. Render Anatomy (Procedural X-Ray Simulation or Custom Uploaded Image)
+      if (loadedImg) {
+        ctx.drawImage(loadedImg, 0, 0, canvas.width, canvas.height);
+      } else {
+        renderAnatomy(ctx, bodyRegion, pathologyType);
       }
-    }
 
-    ctx.restore();
+      // Turn off filters for UI/Overlays so bounding boxes & texts aren't washed out
+      ctx.filter = "none";
 
-    // 7. Write standard HUD metrics (corner coordinates, clinical labels)
-    renderHUD(ctx, brightness, contrast, zoom, bodyRegion);
+      // 4. Render AI Overlays if enabled
+      if (showAiOverlay) {
+        renderAiOverlays(ctx, bodyRegion, pathologyType, aiConfidence, boundingBoxes, heatmapCenters);
+      }
 
+      // 5. Render saved User Annotations/Measurements
+      ctx.lineWidth = 2;
+      currentAnnotations.forEach(ann => {
+        if (ann.type === "line" && ann.points.length === 2) {
+          // Render linear calliper measurement
+          ctx.strokeStyle = "#10b981"; // Emerald green
+          ctx.fillStyle = "#10b981";
+          
+          const [p1, p2] = ann.points;
+          // Draw dashed connection line
+          ctx.beginPath();
+          ctx.setLineDash([4, 4]);
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Draw calliper ticks
+          drawCalliperTick(ctx, p1, p2);
+
+          // Draw text value
+          ctx.font = "11px monospace";
+          const midX = (p1.x + p2.x) / 2;
+          const midY = (p1.y + p2.y) / 2;
+          ctx.fillStyle = "#10b981";
+          ctx.fillText(ann.value || "", midX + 8, midY - 8);
+        } else if (ann.type === "freehand" && ann.points.length > 1) {
+          ctx.strokeStyle = "#e11d48"; // Rose pink
+          ctx.beginPath();
+          ctx.moveTo(ann.points[0].x, ann.points[0].y);
+          ann.points.slice(1).forEach(pt => ctx.lineTo(pt.x, pt.y));
+          ctx.stroke();
+        }
+      });
+
+      // 6. Draw current drawing feedback in active interaction mode
+      if (currentPoints.length > 0) {
+        ctx.strokeStyle = viewerMode === "measure" ? "#34d399" : "#fb7185";
+        ctx.lineWidth = 1.5;
+        
+        if (viewerMode === "measure" && currentPoints.length === 1) {
+          // Render guide line if placing secondary point
+          // handled in mousemove but draw initial point circle
+          ctx.fillStyle = "#34d399";
+          ctx.beginPath();
+          ctx.arc(currentPoints[0].x, currentPoints[0].y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (viewerMode === "annotate" && currentPoints.length > 1) {
+          ctx.beginPath();
+          ctx.moveTo(currentPoints[0].x, currentPoints[0].y);
+          currentPoints.forEach(pt => ctx.lineTo(pt.x, pt.y));
+          ctx.stroke();
+        }
+      }
+
+      ctx.restore();
+
+      // 7. Write standard HUD metrics (corner coordinates, clinical labels)
+      renderHUD(ctx, brightness, contrast, zoom, bodyRegion);
+    };
+
+    animationFrameId = requestAnimationFrame(render);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
   }, [brightness, contrast, invert, zoom, panX, panY, bodyRegion, pathologyType, showAiOverlay, currentAnnotations, currentPoints, viewerMode, loadedImg, boundingBoxes, heatmapCenters]);
 
   // Procedural Medical Content Engines
@@ -262,6 +271,48 @@ export default function DicomViewer({
           ctx.moveTo(w/2 + 40, h/2 + 60);
           ctx.bezierCurveTo(w/2 + 65, h/2 + 80, w/2 + 80, h/2 + 105, w/2 + 95, h/2 + 120);
           ctx.stroke();
+        }
+
+        // Left-sided Pneumothorax (extreme deep black void with visceral line collapse)
+        if (pathology === "Pneumothorax") {
+          ctx.fillStyle = "rgba(3, 4, 6, 0.98)";
+          ctx.beginPath();
+          ctx.ellipse(w/2 - 95, h/2 - 40, 30, 70, -0.15, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Visceral pleura line highlight
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.55)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.ellipse(w/2 - 95, h/2 - 40, 30, 70, -0.15, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Label arrow and indicator
+          ctx.fillStyle = "#ef4444";
+          ctx.font = "bold 9px monospace";
+          ctx.fillText("COLLAPSED LUNG MARGIN", w/2 - 130, h/2 + 50);
+          ctx.strokeStyle = "#ef4444";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(w/2 - 100, h/2 + 40);
+          ctx.lineTo(w/2 - 90, h/2);
+          ctx.stroke();
+        }
+
+        // Osteolytic bone lesions inside ribs/clavicles (simulated myeloma/metastasis)
+        if (pathology === "Bone Lesion") {
+          ctx.fillStyle = "rgba(6, 8, 10, 0.9)";
+          // Lesion spot in right clavicle bone
+          ctx.beginPath();
+          ctx.arc(w/2 + 110, h/2 - 118, 5, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Lesion spot in ribs
+          ctx.beginPath();
+          ctx.arc(w/2 - 130, h/2 + 40, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.arc(w/2 - 120, h/2 + 90, 7, 0, Math.PI * 2);
+          ctx.fill();
         }
 
         // Draw central heart shadow (Mediastinum) - high density (brighter grey)
@@ -375,6 +426,21 @@ export default function DicomViewer({
           ctx.lineTo(w/2 + 200, h/2 + 200);
           ctx.stroke();
         }
+
+        // Osteolytic bone lesions (lytic spots inside iliac bone/wing structure)
+        if (pathology === "Bone Lesion") {
+          ctx.fillStyle = "rgba(10, 12, 15, 0.92)";
+          ctx.beginPath();
+          ctx.arc(w/2 - 120, h/2 - 35, 12, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(w/2 - 145, h/2 - 15, 8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
         break;
       }
       case "Spine X-ray": {
@@ -396,6 +462,16 @@ export default function DicomViewer({
           // Individual vertebra body block
           ctx.fillRect(centerX - 24 + shiftX, y, 48, 38);
           ctx.strokeRect(centerX - 24 + shiftX, y, 48, 38);
+
+          // Osteolytic bone lesion inside vertebrae
+          if (pathology === "Bone Lesion" && i === 3) {
+            ctx.fillStyle = "rgba(10, 12, 15, 0.95)";
+            ctx.beginPath();
+            ctx.arc(centerX + shiftX, y + 19, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+            ctx.stroke();
+          }
 
           // Transverse spine processes wings (left & right wings)
           ctx.fillStyle = "rgba(220, 225, 230, 0.55)";
@@ -474,6 +550,16 @@ export default function DicomViewer({
           // Highlight bone marrow core canal
           ctx.fillStyle = "rgba(12, 15, 18, 0.9)";
           ctx.fillRect(110, boneCenterY - 8, 420, 16);
+
+          // Osteolytic bone lesion inside limb bones
+          if (pathology === "Bone Lesion") {
+            ctx.fillStyle = "rgba(10, 12, 15, 0.95)";
+            ctx.beginPath();
+            ctx.arc(320, boneCenterY, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+            ctx.stroke();
+          }
         }
         break;
       }
@@ -660,6 +746,38 @@ export default function DicomViewer({
       targetW = 110;
       targetH = 80;
       annotationLabel = `Pneumonic Infiltration: ${confidence.toFixed(1)}%`;
+    } else if (pathology === "Pneumothorax" && region === "Chest X-ray") {
+      targetX = w / 2 - 140;
+      targetY = h / 2 - 100;
+      targetW = 110;
+      targetH = 130;
+      annotationLabel = `Pneumothorax Pleural Trap: ${confidence.toFixed(1)}%`;
+    } else if (pathology === "Bone Lesion") {
+      if (region === "Chest X-ray") {
+        targetX = w / 2 - 150;
+        targetY = h / 2 + 10;
+        targetW = 50;
+        targetH = 50;
+        annotationLabel = `Osteolytic Rib Lesion: ${confidence.toFixed(1)}%`;
+      } else if (region === "Pelvis X-ray") {
+        targetX = w / 2 - 135;
+        targetY = h / 2 - 45;
+        targetW = 50;
+        targetH = 50;
+        annotationLabel = `Iliac Bone Lesion: ${confidence.toFixed(1)}%`;
+      } else if (region === "Spine X-ray") {
+        targetX = w / 2 - 24;
+        targetY = 30 + 3 * 48;
+        targetW = 48;
+        targetH = 38;
+        annotationLabel = `Vertebral Lytic L1 Lesion: ${confidence.toFixed(1)}%`;
+      } else {
+        targetX = 270;
+        targetY = h / 2 - 15;
+        targetW = 50;
+        targetH = 30;
+        annotationLabel = `Meta Bone Cyst: ${confidence.toFixed(1)}%`;
+      }
     } else if (pathology === "Bone fracture") {
       if (region === "Chest X-ray") {
         return; // Pneumonia study or normal
