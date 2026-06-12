@@ -33,6 +33,24 @@ import {
   Download
 } from "lucide-react";
 
+
+// Helper to dynamically resolve backend endpoint for browser preview vs. native Capacitor builds
+const getApiUrl = (endpoint: string): string => {
+  const isCapacitor = typeof window !== "undefined" && (
+    (window as any).Capacitor || 
+    window.location.protocol === "file:" || 
+    (window.location.hostname === "localhost" && !window.location.port) ||
+    window.location.protocol.startsWith("capacitor")
+  );
+  
+  if (isCapacitor) {
+    // Native mobile wrapper builds redirect endpoints to the live hosted backend environment
+    const hostedBaseUrl = "https://ais-dev-vhpkyvg23mfcogtg4udfsh-151078825315.europe-west2.run.app";
+    return `${hostedBaseUrl}${endpoint}`;
+  }
+  return endpoint;
+};
+
 export default function App() {
   // Current session parameters
   const [activeTab, setActiveTab] = useState<ActiveTab>("WORKSPACE");
@@ -176,7 +194,7 @@ export default function App() {
   const [aiStatus, setAiStatus] = useState<{ aiActive: boolean; isSimulated: boolean; modelUsed: string } | null>(null);
 
   useEffect(() => {
-    fetch("/api/ai-status")
+    fetch(getApiUrl("/api/ai-status"))
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -225,7 +243,7 @@ export default function App() {
       const mimeType = file.type || "image/png";
 
       try {
-        const response = await fetch("/api/analyze-image", {
+        const response = await fetch(getApiUrl("/api/analyze-image"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -326,7 +344,7 @@ ${analysis.preliminaryFindings || "No detailed findings returned. Study alignmen
     appendLog("Report Draft Trigger", `Requested preliminary AI study draft using server proxy for: ${currentPatient.name} / ${currentStudy.bodyRegion}`);
     
     try {
-      const response = await fetch("/api/generate-report", {
+      const response = await fetch(getApiUrl("/api/generate-report"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
