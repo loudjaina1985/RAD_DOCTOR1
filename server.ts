@@ -13,11 +13,16 @@ async function startServer() {
 
   const PORT = 3000;
 
-  // Initialize Gemini API client lazily and safely
+  // Initialize Gemini API client lazily and safely with key sanitization
   let ai: GoogleGenAI | null = null;
-  const apiKey = process.env.GEMINI_API_KEY;
+  let apiKey = process.env.GEMINI_API_KEY;
 
-  if (apiKey && apiKey !== "MY_GEMINI_API_KEY") {
+  if (apiKey) {
+    // Sanitize key (remove spaces, trailing newlines, or copy-pasted double/single quotes)
+    apiKey = apiKey.trim().replace(/^["']|["']$/g, "").trim();
+  }
+
+  if (apiKey && apiKey !== "MY_GEMINI_API_KEY" && apiKey !== "") {
     try {
       ai = new GoogleGenAI({
         apiKey: apiKey,
@@ -27,7 +32,7 @@ async function startServer() {
           },
         },
       });
-      console.log("Gemini AI client successfully initialized.");
+      console.log("Gemini AI client successfully initialized with sanitized key.");
     } catch (err) {
       console.error("Failed to initialize Gemini AI client:", err);
     }
@@ -83,6 +88,16 @@ async function startServer() {
     }
     throw new Error("All attempts and fallback models failed.");
   }
+
+  // API: AI Status checker
+  app.get("/api/ai-status", (req, res) => {
+    res.json({
+      success: true,
+      aiActive: ai !== null,
+      isSimulated: ai === null,
+      modelUsed: ai !== null ? "gemini-3.5-flash" : "simulated-expert-system"
+    });
+  });
 
   // API: Reports Generator Proxy using Gemini
   app.post("/api/generate-report", async (req, res) => {

@@ -172,6 +172,26 @@ export default function App() {
   const [isEditingReport, setIsEditingReport] = useState<boolean>(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "idle">("idle");
 
+  // AI Connection status indicator engine
+  const [aiStatus, setAiStatus] = useState<{ aiActive: boolean; isSimulated: boolean; modelUsed: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/ai-status")
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setAiStatus({
+            aiActive: data.aiActive,
+            isSimulated: data.isSimulated,
+            modelUsed: data.modelUsed
+          });
+        }
+      })
+      .catch(err => {
+        console.error("Failed to query API/AI status:", err);
+      });
+  }, []);
+
   // Auto-save reports state cache to localStorage
   useEffect(() => {
     if (Object.keys(reports).length === 0) return;
@@ -582,7 +602,10 @@ ${analysis.preliminaryFindings || "No detailed findings returned. Study alignmen
       disclaimerNote: "RAD_DOCTOR constitutes a Decision Support System; AI findings liability is designated to the licensed clinician.",
       languageLabel: "Region Locale",
       loadStudy: "Load Record",
-      exportPdf: "Export PDF"
+      exportPdf: "Export PDF",
+      aiLive: "Gemini CLI Live",
+      aiSimulated: "Simulated Model Mode",
+      connecting: "Connecting query pipeline..."
     },
     French: {
       appName: "RAD_DOCTOR Clinique",
@@ -611,7 +634,10 @@ ${analysis.preliminaryFindings || "No detailed findings returned. Study alignmen
       disclaimerNote: "Ce logiciel agit uniquement comme un SADC; les constats IA finaux relèvent de la responsabilité du clinicien agréé.",
       languageLabel: "Sélecteur de Langue",
       loadStudy: "Charger Fichier",
-      exportPdf: "Exporter en PDF"
+      exportPdf: "Exporter en PDF",
+      aiLive: "Service Gemini Live",
+      aiSimulated: "Mode Simulateur SADC",
+      connecting: "Liaison au serveur SADC..."
     },
     Arabic: {
       appName: "RAD_DOCTOR - بوابة الأشعة",
@@ -640,7 +666,10 @@ ${analysis.preliminaryFindings || "No detailed findings returned. Study alignmen
       disclaimerNote: "ملاحظة قانونية: RAD_DOCTOR هو نظام توجيهي مساند؛ وتبقى نتائج الذكاء الاصطناعي (AI Findings) مرئية للممارس الطبي المسؤول.",
       languageLabel: "لغة العرض والتقرير",
       loadStudy: "تحميل الملف",
-      exportPdf: "تصدير كملف PDF"
+      exportPdf: "تصدير كملف PDF",
+      aiLive: "محرك جيميناي نشط",
+      aiSimulated: "وضعية المحاكي السريري",
+      connecting: "جاري الاتصال بالخادم الرئيسي..."
     }
   };
 
@@ -688,7 +717,28 @@ ${analysis.preliminaryFindings || "No detailed findings returned. Study alignmen
                 CDSS Class IIa
               </span>
             </div>
-            <p className="text-xs text-slate-400">{tr.tagline}</p>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
+              <p className="text-xs text-slate-400">{tr.tagline}</p>
+              <span className="hidden sm:inline w-1 h-1 rounded-full bg-slate-650"></span>
+              {aiStatus ? (
+                aiStatus.aiActive ? (
+                  <span className="px-2 py-0.5 rounded text-[8.5px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 font-mono font-bold">
+                     ● {tr.aiLive}
+                  </span>
+                ) : (
+                  <span 
+                    className="px-2 py-0.5 rounded text-[8.5px] bg-amber-500/15 text-amber-400 border border-amber-500/25 font-mono font-bold cursor-help"
+                    title="Using high-fidelity CDSS simulator. Please provide your GEMINI_API_KEY inside the AI Studio Secrets panel to enable real Gemini AI analysis."
+                  >
+                     ● {tr.aiSimulated}
+                  </span>
+                )
+              ) : (
+                <span className="px-2 py-0.5 rounded text-[8.5px] bg-slate-800 text-slate-400 font-mono animate-pulse">
+                  {tr.connecting}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

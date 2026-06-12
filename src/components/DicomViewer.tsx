@@ -748,9 +748,12 @@ export default function DicomViewer({
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
+    const scaleX = rect.width ? (canvas.width / rect.width) : 1;
+    const scaleY = rect.height ? (canvas.height / rect.height) : 1;
+    
     // Convert absolute screen coordinates to transformed local canvas pixels relative to zoom / pan
-    const rawX = e.clientX - rect.left;
-    const rawY = e.clientY - rect.top;
+    const rawX = (e.clientX - rect.left) * scaleX;
+    const rawY = (e.clientY - rect.top) * scaleY;
 
     // Inverse transform the mouse position to match relative layout
     const clickX = (rawX - canvas.width / 2 - panX) / zoom + canvas.width / 2;
@@ -795,8 +798,11 @@ export default function DicomViewer({
     if (!isDrawing && currentPoints.length === 0) return;
 
     const rect = canvas.getBoundingClientRect();
-    const rawX = e.clientX - rect.left;
-    const rawY = e.clientY - rect.top;
+    const scaleX = rect.width ? (canvas.width / rect.width) : 1;
+    const scaleY = rect.height ? (canvas.height / rect.height) : 1;
+    
+    const rawX = (e.clientX - rect.left) * scaleX;
+    const rawY = (e.clientY - rect.top) * scaleY;
 
     // Direct pan in workspace mode
     if (viewerMode === "pan" && isDrawing) {
@@ -833,8 +839,11 @@ export default function DicomViewer({
     if (e.touches.length > 0) {
       const touch = e.touches[0];
       const rect = canvas.getBoundingClientRect();
-      const rawX = touch.clientX - rect.left;
-      const rawY = touch.clientY - rect.top;
+      const scaleX = rect.width ? (canvas.width / rect.width) : 1;
+      const scaleY = rect.height ? (canvas.height / rect.height) : 1;
+      
+      const rawX = (touch.clientX - rect.left) * scaleX;
+      const rawY = (touch.clientY - rect.top) * scaleY;
 
       // Prevent window scrolling during canvas interaction
       if (e.cancelable) {
@@ -889,8 +898,11 @@ export default function DicomViewer({
     if (e.touches.length > 0) {
       const touch = e.touches[0];
       const rect = canvas.getBoundingClientRect();
-      const rawX = touch.clientX - rect.left;
-      const rawY = touch.clientY - rect.top;
+      const scaleX = rect.width ? (canvas.width / rect.width) : 1;
+      const scaleY = rect.height ? (canvas.height / rect.height) : 1;
+      
+      const rawX = (touch.clientX - rect.left) * scaleX;
+      const rawY = (touch.clientY - rect.top) * scaleY;
 
       if (e.cancelable) {
         e.preventDefault();
